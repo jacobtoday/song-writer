@@ -1,6 +1,5 @@
-// Hum — song studio server
-// Express + Postgres. Serves the frontend and a small REST API for songs.
-// Designed for Railway: reads DATABASE_URL and PORT from the environment.
+// Hum — song studio server (flat layout: index.html sits next to this file)
+// Express + Postgres. Reads DATABASE_URL and PORT from the environment (Railway).
 
 const express = require("express");
 const path = require("path");
@@ -8,9 +7,9 @@ const { Pool } = require("pg");
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
+const INDEX = path.join(__dirname, "index.html");
 
 // Railway's Postgres needs SSL. A local unix-socket connection does not.
 const url = process.env.DATABASE_URL;
@@ -71,7 +70,7 @@ function clean(body) {
 
 function dbGuard(res) {
   if (!pool) {
-    res.status(503).json({ error: "Database not connected. Add a Postgres service on Railway." });
+    res.status(503).json({ error: "Database not connected. Add a Postgres service on Railway and reference its DATABASE_URL." });
     return false;
   }
   return true;
@@ -139,9 +138,9 @@ app.delete("/api/songs/:id", async (req, res) => {
   }
 });
 
-// SPA fallback
+// Frontend — served directly from this folder (no public/ subfolder needed)
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(INDEX);
 });
 
 initDb()
