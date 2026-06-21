@@ -44,6 +44,9 @@ async function initDb() {
       updated_at     TIMESTAMPTZ DEFAULT now()
     );
   `);
+  // Migrations for the chord-chart workflow (safe on existing tables)
+  await pool.query(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS chart TEXT DEFAULT '';`);
+  await pool.query(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS capo TEXT DEFAULT '';`);
   console.log("Database ready.");
 }
 
@@ -65,6 +68,8 @@ function clean(body) {
     lyrics: body.lyrics || "",
     chords: body.chords || "",
     notes: body.notes || "",
+    chart: body.chart || "",
+    capo: (body.capo || "").trim(),
   };
 }
 
@@ -97,9 +102,9 @@ app.post("/api/songs", async (req, res) => {
   const s = clean(req.body);
   try {
     const { rows } = await pool.query(
-      `INSERT INTO songs (title, artist, song_key, bpm, time_signature, status, mood, lyrics, chords, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [s.title, s.artist, s.song_key, s.bpm, s.time_signature, s.status, s.mood, s.lyrics, s.chords, s.notes]
+      `INSERT INTO songs (title, artist, song_key, bpm, time_signature, status, mood, lyrics, chords, notes, chart, capo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [s.title, s.artist, s.song_key, s.bpm, s.time_signature, s.status, s.mood, s.lyrics, s.chords, s.notes, s.chart, s.capo]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -114,9 +119,9 @@ app.put("/api/songs/:id", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `UPDATE songs SET title=$1, artist=$2, song_key=$3, bpm=$4, time_signature=$5,
-        status=$6, mood=$7, lyrics=$8, chords=$9, notes=$10, updated_at=now()
-       WHERE id=$11 RETURNING *`,
-      [s.title, s.artist, s.song_key, s.bpm, s.time_signature, s.status, s.mood, s.lyrics, s.chords, s.notes, req.params.id]
+        status=$6, mood=$7, lyrics=$8, chords=$9, notes=$10, chart=$11, capo=$12, updated_at=now()
+       WHERE id=$13 RETURNING *`,
+      [s.title, s.artist, s.song_key, s.bpm, s.time_signature, s.status, s.mood, s.lyrics, s.chords, s.notes, s.chart, s.capo, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Song not found." });
     res.json(rows[0]);
